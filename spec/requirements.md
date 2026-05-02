@@ -102,13 +102,12 @@ An npm package that acts as a shim between Kiro and native MCP server binaries.
 - R12: Support `MCP_BIN_MANIFEST_URL` environment variable to override the default manifest location.
 - R13: Support `MCP_BIN_CACHE_DIR` environment variable to override the default cache location.
 - R14: Forward any additional arguments after server name and version to the binary.
-- R15: Use atomic write semantics for cache population: download to a temporary file in the cache directory, verify the SHA256 checksum, then atomically rename into the final cache path. Never write directly to the final path.
-- R16: On cache hit, verify the cached binary's SHA256 checksum before execution. Re-download on mismatch.
-- R17: Use file-based locking (e.g., `<cache-path>.lock`) to prevent concurrent downloads of the same server+version by multiple processes.
+- R15: Use atomic write semantics for cache population: download to a temporary file in the same directory as the final cache path, verify the SHA256 checksum of the archive, extract the binary, compute and store the binary's SHA256 in a sidecar file (`<binary>.sha256`), then atomically rename both files into the final cache path. Never write directly to the final path.
+- R16: On cache hit, verify the cached binary's SHA256 against the sidecar `.sha256` file before execution. Re-download on mismatch or missing sidecar.
+- R17: Use file-based locking (e.g., `<cache-path>.lock`) to prevent concurrent downloads of the same server+version by multiple processes. The lock file must contain the PID of the holding process. On lock acquisition failure, check if the PID is still alive; if not, break the stale lock. Wait up to 60 seconds for a held lock before failing. Locks older than 10 minutes are considered stale and may be broken.
 - R18: Specify a connect timeout of 5 seconds and a response timeout of 30 seconds for manifest fetches. Specify a total download timeout of 5 minutes for binary downloads.
 - R19: Retry transient failures (HTTP 5xx, TCP reset, TLS handshake timeout) with exponential backoff: 3 attempts with 1s/2s/4s delays. Do not retry 4xx errors.
-- R20: Install signal handlers for SIGTERM and SIGINT during the download/verify phase that clean up temporary files before exit. After exec, use process replacement (execve semantics) so signals are delivered directly to the child.
-- R21: Forward SIGTERM and SIGINT to the child process if using spawn instead of exec. Wait for the child to exit before exiting the runner.
+- R20: Use `child_process.spawn` with stdio inherited. Forward SIGTERM and SIGINT to the child process and wait for the child to exit before exiting the runner. Exit with the child's exit code. During the download/verify phase, install signal handlers that clean up temporary files before exit. The runner must not write to stdout or stderr after spawning the child process.
 
 #### Non-requirements
 
@@ -147,7 +146,7 @@ A JSON file that maps `{server, version, platform}` to a download URL and checks
 - R26: `url` points to a `.tar.gz` archive containing the binary.
 - R27: `sha256` is the checksum of the archive file (not the extracted binary).
 - R28: The manifest must include a top-level `"schema_version": 1` field. The runner must check this and fail if it encounters an unsupported version.
-- R29: The runner must cache the manifest locally with a 1-hour TTL. On fetch failure, fall back to the last-known-good cached manifest with a warning to stderr.
+- R29: The runner must cache the manifest and its `.sig` file together as a pair with a 1-hour TTL. On fetch failure, fall back to the last-known-good cached manifest+signature pair with a warning to stderr. Signature verification applies to both fresh and cached manifests. If the `.sig` file cannot be fetched and no cached signature exists, exit 1 with a clear error. Never use a manifest without a corresponding verified signature.
 - R30: The default manifest URL is `https://chriswessells.github.io/mcp-bin/manifest.json`. The `MCP_BIN_MANIFEST_URL` environment variable overrides this default.
 
 #### Non-requirements
@@ -238,10 +237,10 @@ How the runner appears in a user's local `mcp.json` or agent config.
 - S6: Temporary files must be cleaned up on failure.
 - S7: The manifest must be signed. The runner must verify the signature before trusting any URL or checksum. The signing public key is pinned in the runner package. Signature format: detached Ed25519 signature file at `<manifest-url>.sig`.
 - S8: Validate that `binary_name` in the manifest contains only alphanumeric characters, hyphens, and underscores. Reject values containing `/`, `\`, `..`, or null bytes.
-- S9: During tar.gz extraction, validate that all extracted paths resolve within the target cache directory. Reject archives containing absolute paths, `..` components, or symlinks pointing outside the cache directory.
+- S9: During tar.gz extraction, validate that all extracted paths resolve within the target cache directory. Reject archives containing absolute paths, `..` components, or any symlinks.
 - S10: Log a warning to stderr when using a non-default manifest URL via `MCP_BIN_MANIFEST_URL`.
 - S11: Sanitize URLs in error messages — strip query parameters before printing to prevent credential leakage.
-- S12: The runner must not forward sensitive environment variables (`AWS_*`, `GITHUB_TOKEN`, `*_SECRET`, `*_KEY`, `*_PASSWORD`) to the child process unless explicitly listed in the manifest's `environmentVariables` array for that server.
+- S12: The runner must not forward sensitive environment variables (`AWS_*`, `GITHUB_TOKEN`, `*_SECRET`, `*_KEY`, `*_PASSWORD`) to the child process unless explicitly listed in the Kiro registry entry's `environmentVariables` array for that server (R38). The manifest schema does not control environment variable forwarding.
 
 ## Error Handling
 
@@ -258,6 +257,8 @@ How the runner appears in a user's local `mcp.json` or agent config.
 - E11: Invalid binary_name → exit 1, stderr: "Invalid binary name '<name>' in manifest — must contain only alphanumeric characters, hyphens, and underscores."
 - E12: Archive path traversal detected → exit 1, stderr: "Archive contains unsafe paths. Extraction aborted."
 - E13: Unsupported manifest schema version → exit 1, stderr: "Unsupported manifest schema version <N>. Please update @mcp-bin/runner."
+- E14: Lock acquisition timeout → exit 1, stderr: "Timed out waiting for lock on '<server>' v<version>. Another process may be downloading."
+- E15: Manifest signature file unavailable → exit 1, stderr: "Manifest signature file not found at <url>.sig"
 
 ## Testing
 
@@ -270,6 +271,8 @@ How the runner appears in a user's local `mcp.json` or agent config.
 - T7: Timeout test: stalled download is aborted within the specified timeout.
 - T8: Path traversal test: malicious tar.gz with `..` paths is rejected.
 - T9: Binary name validation test: invalid binary_name is rejected.
+- T10: Stale lock test: lock from a dead PID is broken and download proceeds.
+- T11: Sidecar checksum test: corrupted cached binary (mismatched `.sha256` sidecar) triggers re-download.
 
 ## Phase 2 — Planned
 
@@ -279,5 +282,6 @@ How the runner appears in a user's local `mcp.json` or agent config.
 
 - F1: Support `latest` as a version alias that resolves via the manifest.
 - F2: Cache eviction policy (e.g., keep last N versions).
-- F3: A `mcp-bin publish` CLI that server authors run in CI to update the manifest.
-- F4: Support `--verbose` or `MCP_BIN_VERBOSE=1` for debug logging to stderr.
+- F3: Support additional signing algorithms (GPG, cosign) beyond the Ed25519 baseline.
+- F4: A `mcp-bin publish` CLI that server authors run in CI to update the manifest.
+- F5: Support `--verbose` or `MCP_BIN_VERBOSE=1` for debug logging to stderr.
