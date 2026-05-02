@@ -18,3 +18,5 @@ For each finding, provide:
 5. **Recommendation**: specific way to reduce cost without sacrificing quality
 
 Every line of code is a liability. Every dependency is a maintenance burden. Every feature is a commitment. Challenge whether each is worth its cost.
+
+If your findings suggest changing something that was already decided in `agents/ADR.md`, flag it and recommend consulting the Decision Maker (`agents/decision_maker.md`) rather than overturning the decision directly.

@@ -18,3 +18,5 @@ For each finding, provide:
 5. **Recommendation**: specific improvement
 
 Assume this project will be maintained by one person with limited time. Simplicity wins.
+
+If your findings suggest changing something that was already decided in `agents/ADR.md`, flag it and recommend consulting the Decision Maker (`agents/decision_maker.md`) rather than overturning the decision directly.

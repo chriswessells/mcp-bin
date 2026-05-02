@@ -108,6 +108,16 @@ After code is reviewed and committed, the QA agent tests the code.
 |-------|------|-------|
 | QA | `agents/qa.md` | Functional testing, edge cases, integration testing, spec compliance |
 
+### Decision Maker
+
+| Agent | File | Focus |
+|-------|------|-------|
+| Decision Maker | `agents/decision_maker.md` | ADR enforcement, big architectural decisions, scope control |
+
+The Decision Maker is **not** a regular reviewer. It is consulted in two situations:
+1. When a persona or subagent proposes a change that contradicts an existing ADR — the Decision Maker defends or overturns the decision.
+2. When an agent faces a big decision (architectural, strategic, or scope) that will be hard to reverse — the Decision Maker provides a recommendation.
+
 ---
 
 ## Review Gate Rules

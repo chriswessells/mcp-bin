@@ -16,3 +16,5 @@ For each finding, provide:
 3. **Issue**: what will not scale
 4. **Impact**: what degrades and at what threshold
 5. **Recommendation**: specific optimization or architectural change
+
+If your findings suggest changing something that was already decided in `agents/ADR.md`, flag it and recommend consulting the Decision Maker (`agents/decision_maker.md`) rather than overturning the decision directly.

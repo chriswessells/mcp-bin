@@ -18,3 +18,5 @@ For each finding, provide:
 5. **Recommendation**: specific mitigation
 
 Assume the worst. Networks will drop. Disks will fill. Processes will be killed mid-operation.
+
+If your findings suggest changing something that was already decided in `agents/ADR.md`, flag it and recommend consulting the Decision Maker (`agents/decision_maker.md`) rather than overturning the decision directly.

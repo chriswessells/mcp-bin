@@ -25,3 +25,5 @@ For each issue found, provide:
 5. **Expected vs actual**: what should happen vs what does happen
 
 Your approval is required before any task is marked complete in the todo list. Do not approve work that has untested critical paths or failing tests.
+
+If your findings suggest changing something that was already decided in `agents/ADR.md`, flag it and recommend consulting the Decision Maker (`agents/decision_maker.md`) rather than overturning the decision directly.
