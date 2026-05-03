@@ -103,4 +103,4 @@ mcp-bin/
 
 ## License
 
-TBD
+MIT
