@@ -18,7 +18,7 @@
 
 ## In Progress
 
-- [ ] Implementation Phase 5 (T9: Ed25519 key generation & pinning)
+- [ ] README update (stale content)
 
 ## Completed — Implementation
 
@@ -37,12 +37,13 @@
 - [x] T7 code review (7 personas) — 0 Critical, 3 High, ~10 Medium
 - [x] Fix 3 High findings (server close drain, harness signal handling, shared state try/finally)
 - [x] QA verification — build clean, 48/48 tests pass, smoke tests pass
+- [x] T9: Ed25519 key generation & pinning (keypair generated, public key embedded, sign-manifest.sh)
+- [x] T8: Author tooling (update-manifest.sh — idempotent, 3 platforms)
+- [x] Configure CI/CD using GitHub Actions (tsc + tsx tests + npm cache)
 
 ## Planned
 
-- [ ] T8: Author tooling
-- [ ] T9: Ed25519 key generation & pinning
-- [ ] Configure CI/CD using GitHub Actions
+- [ ] README update (currently stale)
 
 ## Backlog (Medium from Phase 4 code review)
 
