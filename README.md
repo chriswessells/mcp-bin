@@ -8,23 +8,33 @@ Kiro's MCP registry supports `npm`, `pypi`, and `oci` packages — but not compi
 
 ## How It Works
 
-`mcp-bin` bridges this gap with three pieces:
-
-1. **Runner** (`@mcp-bin/runner`) — a thin npm package that downloads, caches, and executes native binaries
-2. **Manifest** — a static JSON file mapping `{server, version, platform}` → download URL + SHA256 checksum
-3. **Server binaries** — prebuilt and published to GitHub Releases by server authors (no change to their workflow)
-
 ```mermaid
 flowchart TD
-    A[Kiro] -->|npx @mcp-bin/runner server version| B[Manifest - hosted JSON]
-    B --> C[GitHub Releases - prebuilt binary]
-    C --> D[~/.cache/mcp-bin/server/version/binary]
+    A["npx @mcp-bin/runner server version"] --> B[Signed Manifest]
+    B --> C[GitHub Releases]
+    C -->|"SHA256 verified"| D[~/.cache/mcp-bin/]
     D --> E[exec over stdio]
+```
+
+1. **Runner** (`@mcp-bin/runner`) — downloads, verifies, caches, and executes native binaries
+2. **Manifest** — Ed25519-signed JSON mapping `{server, version, platform}` → download URL + SHA256
+3. **Server binaries** — prebuilt `.tar.gz` archives on GitHub Releases
+
+## Install
+
+```
+npm install -g @mcp-bin/runner
+```
+
+Or use directly via npx (no install needed):
+
+```
+npx @mcp-bin/runner <server-name> <version>
 ```
 
 ## Usage
 
-### In a Kiro agent config
+### In a Kiro/MCP agent config
 
 ```json
 {
@@ -37,14 +47,14 @@ flowchart TD
 }
 ```
 
+First run downloads the binary (~5s). Subsequent runs use the cache (<100ms).
+
 ### In a Kiro enterprise MCP registry
 
 ```json
 {
   "server": {
     "name": "local-memory-mcp",
-    "description": "Local agent memory MCP server",
-    "version": "0.2.1",
     "packages": [{
       "registryType": "npm",
       "identifier": "@mcp-bin/runner",
@@ -58,20 +68,58 @@ flowchart TD
 }
 ```
 
-## Manifest Format
+## Security
+
+- **Ed25519 manifest signing** — public key pinned in the package; manifest cannot be tampered with
+- **SHA256 archive verification** — every download is verified before extraction
+- **Path traversal protection** — archives with `..` paths or symlinks are rejected
+- **HTTPS-only downloads** — no plaintext HTTP
+- **Env var filtering** — sensitive variables (`AWS_*`, `GITHUB_TOKEN`, `*_SECRET`, `*_KEY`, `*_PASSWORD`) are stripped before spawning the binary
+- **Atomic cache writes** — no partial state on crash or concurrent access
+- **File-based locking** — concurrent invocations don't corrupt the cache
+
+## Configuration
+
+| Environment Variable | Description | Default |
+|---|---|---|
+| `MCP_BIN_MANIFEST_URL` | Manifest JSON URL | `https://chriswessells.github.io/mcp-bin/manifest.json` |
+| `MCP_BIN_CACHE_DIR` | Local cache directory | `~/.cache/mcp-bin` |
+| `MCP_BIN_ALLOW_ENV` | Comma-separated env vars to pass through denylist | (none) |
+| `MCP_BIN_DEBUG` | Set to `1` for debug logging | (none) |
+| `MCP_BIN_CHECK` | Set to `1` for diagnostic mode (no exec) | (none) |
+
+## Platforms
+
+- `darwin-arm64` (macOS Apple Silicon)
+- `linux-x64`
+- `linux-arm64`
+
+## For Server Authors
+
+Add your server to the manifest after a release:
+
+```bash
+./update-manifest.sh \
+  --server my-server \
+  --version 1.0.0 \
+  --release-url https://github.com/you/my-server/releases/download/v1.0.0 \
+  --checksums https://github.com/you/my-server/releases/download/v1.0.0/SHA256SUMS.txt
+
+./sign-manifest.sh manifest.json
+```
+
+### Manifest Format
 
 ```json
 {
+  "schema_version": 1,
   "servers": {
-    "local-memory-mcp": {
-      "0.2.1": {
+    "my-server": {
+      "1.0.0": {
         "darwin-arm64": {
-          "url": "https://github.com/chriswessells/local-memory-mcp/releases/download/v0.2.1/local-memory-mcp-aarch64-apple-darwin.tar.gz",
-          "sha256": "abc123..."
-        },
-        "linux-x64": {
-          "url": "https://github.com/chriswessells/local-memory-mcp/releases/download/v0.2.1/local-memory-mcp-x86_64-unknown-linux-gnu.tar.gz",
-          "sha256": "def456..."
+          "url": "https://github.com/you/my-server/releases/download/v1.0.0/my-server-darwin-arm64.tar.gz",
+          "sha256": "abc123...",
+          "binary_name": "my-server"
         }
       }
     }
@@ -79,27 +127,17 @@ flowchart TD
 }
 ```
 
-## Configuration
+## Development
 
-| Environment Variable | Description | Default |
-|---|---|---|
-| `MCP_BIN_MANIFEST_URL` | URL of the manifest JSON | (built-in default) |
-| `MCP_BIN_CACHE_DIR` | Local cache directory | `~/.cache/mcp-bin` |
-
-## Project Structure
-
-```
-mcp-bin/
-├── spec/
-│   └── requirements.md    # Full requirements specification
-├── runner/                 # @mcp-bin/runner npm package (TODO)
-├── manifest/               # Manifest schema and tooling (TODO)
-└── README.md
+```bash
+npm ci
+npx tsc --noEmit          # type check
+node --import tsx --test tests/*.test.ts  # run all 48 tests
 ```
 
-## Status
+## How This Package Was Built
 
-🚧 **Design phase** — see [spec/requirements.md](spec/requirements.md) for the full specification.
+See [HOW_I_DEVELOPED_THIS_PACKAGE.md](HOW_I_DEVELOPED_THIS_PACKAGE.md) for a detailed writeup of the spec-driven, multi-agent development process used to build this package from scratch in a single day.
 
 ## License
 
