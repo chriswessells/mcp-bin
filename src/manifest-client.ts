@@ -18,8 +18,8 @@ const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 const CONNECT_TIMEOUT_MS = 5_000;
 const RESPONSE_TIMEOUT_MS = 30_000;
 
-// T9-PLACEHOLDER: Replace with real Ed25519 public key in DER SPKI format
-const DEFAULT_PUBLIC_KEY = Buffer.alloc(44); // 44 bytes = DER SPKI wrapper (12) + 32 zero bytes
+// Ed25519 public key for manifest signature verification (DER SPKI format)
+const DEFAULT_PUBLIC_KEY = Buffer.from([48,42,48,5,6,3,43,101,112,3,33,0,245,177,54,119,148,170,228,168,142,127,12,132,173,32,182,181,184,111,72,145,73,39,208,228,102,85,2,208,255,211,206,192]);
 
 export interface ManifestClientConfig {
   manifestUrl: string;

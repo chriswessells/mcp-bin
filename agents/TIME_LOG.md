@@ -36,4 +36,8 @@
 | 2026-05-02 | Fix | Fix 3 High findings + 2 Medium | 10 min |
 | 2026-05-02 | QA | Build + 48 tests + smoke tests | 5 min |
 | 2026-05-02 | Tracking | Update TODO, TIME_LOG, LESSONS_LEARNED | 5 min |
-| | | **Total** | **~370 min** |
+| 2026-05-02 | Implementation | T9: Ed25519 key gen + sign-manifest.sh | 10 min |
+| 2026-05-02 | Infrastructure | CI/CD: GitHub Actions workflow | 5 min |
+| 2026-05-02 | Implementation | T8: update-manifest.sh | 10 min |
+| 2026-05-02 | Tracking | Update TODO, TIME_LOG | 5 min |
+| | | **Total** | **~400 min** |
