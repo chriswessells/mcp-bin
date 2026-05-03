@@ -17,18 +17,13 @@ A generic npm-based runner that downloads, caches, and executes prebuilt native 
 
 ## Architecture
 
-```
-Kiro MCP Registry (enterprise allowlist JSON)
-    ↓ references @mcp-bin/runner via registryType: "npm"
-npx @mcp-bin/runner <server-name> <version>
-    ↓ reads manifest
-Manifest Registry (hosted JSON — S3, GitHub Pages, etc.)
-    ↓ resolves {server-name, version, platform} → URL + checksum
-GitHub Releases (prebuilt binaries)
-    ↓ downloads, verifies, caches
-~/.cache/mcp-bin/<server-name>/<version>/<binary>
-    ↓ exec with stdio inherited
-Native MCP server running
+```mermaid
+flowchart TD
+    A[Kiro MCP Registry\nenterprise allowlist JSON] -->|"references @mcp-bin/runner via registryType: npm"| B["npx @mcp-bin/runner &lt;server-name&gt; &lt;version&gt;"]
+    B -->|reads manifest| C[Manifest Registry\nhosted JSON — S3, GitHub Pages, etc.]
+    C -->|"resolves {server-name, version, platform} → URL + checksum"| D[GitHub Releases\nprebuilt binaries]
+    D -->|"downloads, verifies, caches"| E["~/.cache/mcp-bin/&lt;server-name&gt;/&lt;version&gt;/&lt;binary&gt;"]
+    E -->|exec with stdio inherited| F[Native MCP server running]
 ```
 
 ## Quickstart Example

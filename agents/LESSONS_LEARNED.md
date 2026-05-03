@@ -1,0 +1,47 @@
+# Lessons Learned
+
+## Persona Improvement (2026-05-02)
+
+- **Bounding scope eliminates 80% of noise** — Research (Jacar, 2025) confirms that explicitly telling a reviewer what to look at and what to ignore drops false-positive rates from ~40% to under 10%. Applied: each persona now has an "Ownership Boundary" section listing what they own exclusively and what they must NOT review.
+- **Reliability ≠ Resilience** — IBM Well-Architected Framework defines: "Reliability = available as intended; Resilience = capacity to recover from failures." Our T0 review showed both personas flagging the same issues. Applied: Reliability owns "works correctly under normal/degraded conditions" (correctness, durability, idempotency, timeouts). Resilience owns "recovers and contains damage when broken" (blast radius, retry strategy, self-healing, rollback).
+- **Phase-appropriate review prevents irrelevant findings** — Architecture reviews and implementation reviews need fundamentally different criteria (Yedwab, 2014). Scaffolding code shouldn't be reviewed for missing README or production performance. Applied: each persona has phase-awareness instructions (spec/scaffolding/implementation/integration) with different focus areas per phase.
+- **30-40% false positive rate kills trust** — CodeAnt research shows developers stop reading AI review comments after 2 sprints of noise. The fix is severity calibration with concrete definitions, not subjective judgment. Applied: each persona has calibrated severity definitions with specific thresholds (e.g., Critical for security = "exploitable with no user interaction"; Critical for scalability = "OOM or deadlock under normal load").
+- **"No findings" must be a valid output** — Personas felt compelled to find something even when nothing was relevant. This creates noise. Applied: explicit rule in every persona that "No findings." is valid and respected.
+- **ATAM tradeoff awareness** — The Architecture Tradeoff Analysis Method's core insight: quality attributes compete. A security fix may hurt DX; a performance fix may hurt maintainability. Applied: every finding now requires a "Tradeoff" field stating what the recommendation costs.
+- **Ownership boundaries prevent duplicate findings** — In T0 review, 4 personas flagged the same `files` field issue and 3 flagged the same devDependency pinning. Applied: each concern is assigned to exactly one persona. Others are told "do NOT review" those concerns.
+
+## Design Phase (2026-05-02)
+
+- **Run all 7 persona reviews in parallel** — takes ~2 min wall-clock vs ~14 min sequential. No quality loss.
+- **Chief Architect Engineer should review ADR conflicts before fixes are applied** — almost applied fixes without consulting the Chief Architect Engineer on 3 ADR conflicts. The Chief Architect Engineer rejected expanding the env var denylist (which 4 personas recommended) and chose a simpler escape hatch instead. Always route ADR conflicts through the Chief Architect Engineer first.
+- **Rename order matters for atomicity** — sidecar-first rename is safer than binary-first because a sidecar without a binary is a smaller orphan and triggers the same self-healing (CacheMiss → re-download).
+- **R20 "no output after spawn" needs nuance** — the strict reading would silence spawn failures entirely. Clarified: R20 applies after *successful* spawn. Pre-spawn errors should emit diagnostics.
+- **Manifest fetch should not retry when a cache fallback exists** — applying the same retry policy to all HTTP calls wastes time. Differentiate: binary downloads (no fallback, retry aggressively) vs manifest fetch (has cache fallback, single attempt).
+- **Pin security-critical dependencies to exact versions** — caret ranges on `tar-stream` (the only external dep, handling untrusted archives) was flagged by 3 personas independently.
+
+## Phase 2 Implementation (2026-05-02)
+
+- **TypeScript parameter properties break `--experimental-strip-types`** — Node 22's strip-types mode doesn't support `public readonly` in constructor params. Had to refactor `McpBinError` to use explicit field declarations. Use plain field assignments in any code that needs to run without compilation.
+- **`.js` imports in TypeScript ESM don't work with strip-types** — TypeScript's convention of importing `./foo.js` (which resolves to `./foo.ts` at compile time) doesn't work with Node's native TypeScript support. Tests must either use `tsx` or import from compiled `dist/`. Standardized on `npx tsx --test` for all test execution.
+- **Parallel subagents produce inconsistent test patterns** — Each subagent chose a different import strategy (some from `dist/`, some from `src/*.ts`). Need to specify the test import convention in subagent instructions. Fixed by standardizing all tests to import from `../src/*.ts` and run with `tsx`.
+- **HTTP redirect support is essential for GitHub Releases** — `node:https` does NOT follow redirects automatically. GitHub Releases always returns 302 → CDN URL. This was caught by the security reviewer as a functional bug. Must implement redirect following with HTTPS-only enforcement and hop limit.
+- **Streaming SHA256 is strictly better than buffered** — `readFile` + hash loads the entire binary into memory. For 100MB+ binaries this causes memory pressure. `createReadStream` + hash.update is the same lines of code with no memory penalty. Always use streaming for file hashing.
+- **Signal handlers must be cleaned up** — `process.on('SIGTERM', handler)` without corresponding `removeListener` leaks handlers and can throw ESRCH when forwarding to a dead child process. Always store handler references and remove them when the child exits.
+- **Placeholder keys need runtime guards** — A 44-byte zero buffer passes through `crypto.verify()` without throwing (returns false). Without a runtime check, shipping with the placeholder would produce a confusing "manifest may have been tampered with" error instead of a clear "key not configured" error.
+- **Cached signatures must match cached manifests** — Accepting a cached `.sig` to verify a *fresh* manifest creates a replay attack vector. The fix is simple: only use cached sig when the manifest bytes are identical to the cached manifest bytes.
+
+## Phase 3 CLI Integration (2026-05-02)
+
+- **Signal handlers must release ALL held resources** — The signal handler cleaned up temp files but forgot to release the lock file. Since `process.exit()` in a signal handler bypasses `finally` blocks, every resource held at signal time must be released synchronously in the handler itself. Checklist for signal handlers: temp files, lock files, child processes.
+- **Marketability "Critical" findings need design-doc cross-reference** — The Marketability persona flagged the binary name `mcp-bin-runner` as a Critical naming mismatch. But the name was an intentional design decision (scoped package `@mcp-bin/runner` → unscoped binary `mcp-bin-runner`). Always cross-reference Critical findings against the design docs before accepting them.
+- **tsx needed as devDependency for TypeScript test execution** — Tests import from `../src/*.ts` directly, which requires a TypeScript-aware loader. Node's `--experimental-strip-types` doesn't handle `.js` extension imports in TypeScript source files. `tsx` is the simplest solution — add it to devDependencies.
+- **Integration layer reviews produce fewer findings than component reviews** — T6 review found 1 High vs T1–T5's 10 High. Integration code that delegates to well-reviewed components inherits their quality. The main risk surface is resource lifecycle management (locks, signals, cleanup) at the orchestration layer.
+
+## Phase 4 Integration Tests (2026-05-02)
+
+- **Test harness pattern avoids modifying production code** — Instead of refactoring cli.ts to accept injectable dependencies, creating a parallel harness (`integration-harness.ts`) that imports the same components but accepts a test public key via env var is simpler and avoids coupling test infrastructure to production interfaces. Tradeoff: must keep harness in sync with cli.ts manually.
+- **Self-signed cert generation in pure Node.js is fragile** — Hand-rolling ASN.1 DER for X.509 certificates works but is ~100 lines of opaque code. For future projects, consider the `selfsigned` package or committing static test certs as fixtures.
+- **Shared mutable state in tests needs try/finally** — When tests temporarily swap global state (archive buffers, server behavior flags), assertion failures before restoration poison all subsequent tests. Always wrap state mutations in try/finally.
+- **server.close() doesn't drain connections** — Node's `server.close()` stops accepting new connections but doesn't terminate existing ones. For tests with intentionally-stalled connections (timeout tests), call `server.closeAllConnections()` (Node 18.2+) to prevent test process hangs.
+- **Integration test reviews produce mostly Medium/Low findings** — Phase 4 review found 0 Critical, 3 High (all in test infrastructure robustness), vs Phase 2's 1 Critical + 10 High. Well-tested components produce well-behaved integration tests. The main risk surface is test infrastructure reliability, not the code under test.
+- **Signal handlers in test harnesses prevent inter-test pollution** — If a test kills the harness mid-download (timeout test), without signal handlers the lock file persists and subsequent tests may stall. Mirror production signal handling in test harnesses.

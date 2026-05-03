@@ -65,9 +65,21 @@ Subagents implement the approved design following the DAG and instructions.
 
 ### Phase 7: Code Review
 
-All 7 review personas evaluate the implementation.
+All 7 review personas evaluate the implementation **after each implementation phase** (not just once at the end). For example, if the plan has Phase 1 (scaffolding), Phase 2 (parallel components), Phase 3 (integration), etc., a code review gate occurs after each phase completes.
 
-**Gate**: Fix all **Critical** and **High** findings before committing.
+**Gate**: Fix all **Critical** and **High** findings before advancing to the next implementation phase.
+
+**Post-phase gate** (must complete before moving to next phase):
+1. **Code review** — run all 7 personas in parallel
+2. **Fix** — fix all Critical and High findings; re-review if fixes change API contracts
+3. **QA verification** — run build, tests, and smoke-tests to verify code works as designed
+4. **Documentation update** — update tracking documents:
+   - `agents/TODO.md` — mark completed tasks, update in-progress
+   - `agents/TIME_LOG.md` — log time spent
+   - `agents/LESSONS_LEARNED.md` — record any new insights
+   - `agents/ADR.md` — record any new decisions made during the phase
+
+**Autonomy rule**: All steps within a phase (implementation, review, fix, QA, docs) execute without asking for user confirmation. Only ask the user for verification **between phases** — after the post-phase gate is fully complete and before starting the next phase.
 
 ### Phase 8: QA
 
@@ -90,17 +102,23 @@ After code is reviewed and committed, the QA agent tests the code.
 
 ## Review Personas
 
-7 personas review at each gate. Each produces findings rated **Critical | High | Medium | Low**.
+7 personas review at each gate. Each has **exclusive ownership** of specific concerns (no overlap), **phase awareness** (adapts depth to spec/scaffolding/implementation/integration), and **calibrated severity** (concrete definitions per persona). Each produces findings rated **Critical | High | Medium | Low**.
 
-| Persona | File | Focus |
-|---------|------|-------|
-| Security | `agents/security.md` | Injection, supply chain, least privilege, data leakage, secure defaults |
-| Scalability | `agents/scalability.md` | Performance bottlenecks, resource limits, growth patterns, caching |
-| Reliability | `agents/reliability.md` | Failure modes, durability, recovery, graceful degradation |
-| Maintainability | `agents/maintainability.md` | Code organization, test strategy, dependencies, documentation |
-| Marketability | `agents/marketability.md` | Developer experience, documentation quality, adoption barriers, ecosystem fit |
-| Resilience | `agents/resilience.md` | Fault tolerance, blast radius, cascading failures, self-healing |
-| Profitability | `agents/profitability.md` | Cost efficiency, resource usage, build/deploy costs, operational overhead |
+"No findings." is a valid output — silence is better than noise.
+
+| Persona | File | Exclusive Ownership |
+|---------|------|---------------------|
+| Security | `agents/security.md` | Input validation, injection, supply chain, secrets, crypto, file system security, network security, secure defaults |
+| Scalability | `agents/scalability.md` | Performance bottlenecks, resource limits, caching strategy, concurrency, algorithmic complexity, startup time |
+| Reliability | `agents/reliability.md` | Correctness under degraded conditions, data durability, idempotency, timeouts, observability, resource cleanup |
+| Maintainability | `agents/maintainability.md` | Code organization, naming, test strategy, dependency management, build/CI complexity, type safety, API stability |
+| Marketability | `agents/marketability.md` | Developer experience, documentation, adoption barriers, ecosystem fit, naming, distribution, community readiness |
+| Resilience | `agents/resilience.md` | Blast radius, retry/backoff strategy, state consistency after failure, self-healing, dependency isolation, rollback |
+| Profitability | `agents/profitability.md` | Build/CI costs, operational overhead, scope discipline, buy vs build, time to value, development velocity |
+
+**Key distinction**: Reliability = "works correctly under normal/degraded conditions." Resilience = "recovers and contains damage when broken."
+
+Every finding must include a **Tradeoff** field (ATAM principle: quality attributes compete).
 
 ### QA Agent
 
@@ -108,15 +126,15 @@ After code is reviewed and committed, the QA agent tests the code.
 |-------|------|-------|
 | QA | `agents/qa.md` | Functional testing, edge cases, integration testing, spec compliance |
 
-### Decision Maker
+### Chief Architect Engineer
 
 | Agent | File | Focus |
 |-------|------|-------|
-| Decision Maker | `agents/decision_maker.md` | ADR enforcement, big architectural decisions, scope control |
+| Chief Architect Engineer | `agents/chief_architect_engineer.md` | ADR enforcement, big architectural decisions, scope control |
 
-The Decision Maker is **not** a regular reviewer. It is consulted in two situations:
-1. When a persona or subagent proposes a change that contradicts an existing ADR — the Decision Maker defends or overturns the decision.
-2. When an agent faces a big decision (architectural, strategic, or scope) that will be hard to reverse — the Decision Maker provides a recommendation.
+The Chief Architect Engineer is **not** a regular reviewer. It is consulted in two situations:
+1. When a persona or subagent proposes a change that contradicts an existing ADR — the Chief Architect Engineer defends or overturns the decision.
+2. When an agent faces a big decision (architectural, strategic, or scope) that will be hard to reverse — the Chief Architect Engineer provides a recommendation.
 
 ---
 
@@ -147,7 +165,7 @@ If any agent (during coding or review) discovers something that requires a desig
 - Maintain a todo list of their assigned work
 - Follow the DAG — respect task dependencies
 - Use API contracts — develop against the interface, not the implementation
-- Write tests alongside code
+- Write tests alongside code — **focus on critical and high-severity paths only; do not write tests for low-likelihood edge cases**
 - Report blockers immediately rather than working around them
 
 ---

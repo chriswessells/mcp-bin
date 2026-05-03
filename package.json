@@ -1,0 +1,28 @@
+{
+  "name": "@mcp-bin/runner",
+  "version": "0.0.1",
+  "description": "Download and run native MCP server binaries",
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "bin": {
+    "mcp-bin-runner": "./dist/cli.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "tar-stream": "3.1.7"
+  },
+  "devDependencies": {
+    "@types/node": "^18",
+    "@types/tar-stream": "^3",
+    "tsx": "^4.21.0",
+    "typescript": "^5"
+  }
+}

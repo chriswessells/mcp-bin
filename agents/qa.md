@@ -26,4 +26,4 @@ For each issue found, provide:
 
 Your approval is required before any task is marked complete in the todo list. Do not approve work that has untested critical paths or failing tests.
 
-If your findings suggest changing something that was already decided in `agents/ADR.md`, flag it and recommend consulting the Decision Maker (`agents/decision_maker.md`) rather than overturning the decision directly.
+If your findings suggest changing something that was already decided in `agents/ADR.md`, flag it and recommend consulting the Chief Architect Engineer (`agents/chief_architect_engineer.md`) rather than overturning the decision directly.

@@ -41,15 +41,15 @@
 
 ## DAG
 
-```
-T1 ─────────────────────────────────────┐
-T2 ──────────────┐                      │
-T3 ──────────────┤                      │
-T5 ──────────────┤── all merge ──► Commit updated spec
-T6 ──────────────┤
-T7 ──────────────┘                      │
-                                        │
-T2 ──────► T4 ──────────────────────────┘
+```mermaid
+flowchart LR
+    T1 --> Commit[Commit updated spec]
+    T2 --> Commit
+    T3 --> Commit
+    T5 --> Commit
+    T6 --> Commit
+    T7 --> Commit
+    T2 --> T4 --> Commit
 ```
 
 **Parallel group 1** (no dependencies): T1, T2, T3, T5, T6, T7

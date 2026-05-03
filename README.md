@@ -14,16 +14,12 @@ Kiro's MCP registry supports `npm`, `pypi`, and `oci` packages — but not compi
 2. **Manifest** — a static JSON file mapping `{server, version, platform}` → download URL + SHA256 checksum
 3. **Server binaries** — prebuilt and published to GitHub Releases by server authors (no change to their workflow)
 
-```
-Kiro → npx @mcp-bin/runner <server> <version>
-         ↓
-       Manifest (hosted JSON)
-         ↓
-       GitHub Releases (prebuilt binary)
-         ↓
-       ~/.cache/mcp-bin/<server>/<version>/<binary>
-         ↓
-       exec over stdio
+```mermaid
+flowchart TD
+    A[Kiro] -->|npx @mcp-bin/runner server version| B[Manifest - hosted JSON]
+    B --> C[GitHub Releases - prebuilt binary]
+    C --> D[~/.cache/mcp-bin/server/version/binary]
+    D --> E[exec over stdio]
 ```
 
 ## Usage

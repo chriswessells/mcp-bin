@@ -43,10 +43,11 @@
 ## ADR-006: Environment variables only for runner config (no CLI flags)
 
 **Date**: 2026-05-02
-**Status**: Accepted
+**Status**: Accepted — **amended 2026-05-02**
 **Context**: CLI flags (`--manifest-url`, `--cache-dir`) conflict with R14 (forward additional arguments to the binary). Ambiguity about which flags belong to the runner vs the child.
 **Decision**: Use environment variables only (`MCP_BIN_MANIFEST_URL`, `MCP_BIN_CACHE_DIR`). No CLI flags for runner configuration.
 **Rationale**: Env vars are unambiguous, don't conflict with forwarded args, and are already the integration path for Kiro registry entries.
+**Amendment**: Added `MCP_BIN_CHECK` env var. When set to `1`, runs diagnostic mode (verify manifest, signature, cache, platform) without executing a binary. Outputs JSON status to stdout, exits 0/1. No CLI flags added — stays within the "env vars only" principle. Chief Architect Engineer ruling: `--check` flag rejected (precedent-setting), env var accepted.
 
 ## ADR-007: Shell script for manifest updates, not a CLI tool
 
@@ -75,7 +76,8 @@
 ## ADR-010: Denylist approach for sensitive env var filtering
 
 **Date**: 2026-05-02
-**Status**: Accepted
+**Status**: Accepted — **amended 2026-05-02**
 **Context**: S12 requires filtering sensitive env vars. Options: allowlist (only forward explicitly listed vars) or denylist (block known-sensitive patterns).
 **Decision**: Denylist (`AWS_*`, `GITHUB_TOKEN`, `*_SECRET`, `*_KEY`, `*_PASSWORD`). Override via Kiro registry `environmentVariables` array.
 **Tradeoff**: Denylists are inherently incomplete. Resilience review suggested an allowlist. Accepted denylist for v1 because most MCP servers need a broad environment to function. May revisit if security incidents occur.
+**Amendment**: Added `MCP_BIN_ALLOW_ENV` env var (comma-separated exact var names to pass through despite matching denylist patterns). Solves the real customer problem (e.g., `AWS_REGION` blocked by `/^AWS_/`). Denylist patterns NOT expanded — adding more patterns is a treadmill. Chief Architect Engineer ruling: escape hatch is the right fix, not a bigger denylist.
