@@ -177,7 +177,7 @@ Read `spec/requirements.md`. Make these changes:
    ```
    - Add to R16 schema: a top-level `"schema_version": 1` field. The runner must check this and fail with "Unsupported manifest schema version <N>. Please update @mcp-bin/runner." if it encounters an unsupported version.
    - New requirement: The runner should cache the manifest locally with a 1-hour TTL. On fetch failure, fall back to the last-known-good cached manifest with a warning to stderr.
-   - New requirement: Define a default manifest URL: `https://mcpregistry.wessells.io/manifest.json` (GitHub Pages on this repo). The `MCP_BIN_MANIFEST_URL` env var overrides this.
+   - New requirement: Define a default manifest URL: `https://your-registry.example.com/manifest.json` (GitHub Pages on this repo). The `MCP_BIN_MANIFEST_URL` env var overrides this.
    ```
 
 2. Add a new requirement for runner versioning:

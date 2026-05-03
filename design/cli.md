@@ -22,7 +22,7 @@ Positional:
 Everything after server-name and version is forwarded to the binary (R14).
 
 Environment:
-  MCP_BIN_MANIFEST_URL   Override manifest URL (default: https://mcpregistry.wessells.io/manifest.json)
+  MCP_BIN_MANIFEST_URL   Override manifest URL (default: https://your-registry.example.com/manifest.json)
   MCP_BIN_CACHE_DIR      Override cache directory (default: ~/.cache/mcp-bin)
 ```
 

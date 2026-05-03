@@ -62,7 +62,7 @@
 **Date**: 2026-05-02
 **Status**: Accepted
 **Context**: The manifest needs a default HTTPS location. Options: S3, GitHub Pages, custom server.
-**Decision**: `https://mcpregistry.wessells.io/manifest.json` — GitHub Pages on this repo.
+**Decision**: `https://your-registry.example.com/manifest.json` — GitHub Pages on this repo.
 **Rationale**: Zero cost, zero infrastructure, version-controlled, automatic deployment on push.
 
 ## ADR-009: spawn + signal forwarding instead of execve

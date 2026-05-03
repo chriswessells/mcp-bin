@@ -83,7 +83,7 @@ The integration tests need:
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `MCP_BIN_MANIFEST_URL` | `https://mcpregistry.wessells.io/manifest.json` | Manifest location |
+| `MCP_BIN_MANIFEST_URL` | `https://your-registry.example.com/manifest.json` | Manifest location |
 | `MCP_BIN_CACHE_DIR` | `~/.cache/mcp-bin` | Cache root directory |
 | `MCP_BIN_ALLOW_FILE_PROTOCOL` | (none) | `1` to allow file:// manifests (dev only) |
 | `MCP_BIN_DEBUG` | (none) | `1` for debug logging to stderr |
