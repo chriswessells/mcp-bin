@@ -56,7 +56,7 @@ You maintain `my-server` on GitHub with release binaries. Here's what you do:
    }
    ```
 
-2. Host the manifest at a public HTTPS URL (or submit to the default registry at `https://chriswessells.github.io/mcp-bin/manifest.json`).
+2. Host the manifest at a public HTTPS URL (or submit to the default registry at `https://mcpregistry.wessells.io/manifest.json`).
 
 ### End User
 
@@ -142,7 +142,7 @@ A JSON file that maps `{server, version, platform}` to a download URL and checks
 - R27: `sha256` is the checksum of the archive file (not the extracted binary).
 - R28: The manifest must include a top-level `"schema_version": 1` field. The runner must check this and fail if it encounters an unsupported version.
 - R29: The runner must cache the manifest and its `.sig` file together as a pair with a 1-hour TTL. On fetch failure, fall back to the last-known-good cached manifest+signature pair with a warning to stderr. Signature verification applies to both fresh and cached manifests. If the `.sig` file cannot be fetched and no cached signature exists, exit 1 with a clear error. Never use a manifest without a corresponding verified signature.
-- R30: The default manifest URL is `https://chriswessells.github.io/mcp-bin/manifest.json`. The `MCP_BIN_MANIFEST_URL` environment variable overrides this default.
+- R30: The default manifest URL is `https://mcpregistry.wessells.io/manifest.json`. The `MCP_BIN_MANIFEST_URL` environment variable overrides this default.
 
 #### Non-requirements
 
