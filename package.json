@@ -1,6 +1,6 @@
 {
   "name": "@mcp-bin/runner",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Download and run native MCP server binaries",
   "license": "MIT",
   "type": "module",
