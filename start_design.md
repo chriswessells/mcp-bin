@@ -32,7 +32,7 @@ Per AGENTS.md Phase 3 (Design) and Phase 4 (Plan):
 - **Locking**: File-based with PID, 60s wait, 10-minute stale auto-break
 - **Signal handling**: `child_process.spawn` with signal forwarding (no execve in Node.js)
 - **Config**: Environment variables only (no CLI flags for runner config)
-- **Manifest hosting**: GitHub Pages default (`https://chriswessells.github.io/mcp-bin/manifest.json`)
+- **Manifest hosting**: GitHub Pages default (`https://mcpregistry.wessells.io/manifest.json`)
 - **Author tooling**: Shell script (`update-manifest.sh`) using `jq` and `curl`
 - **No Windows in v1**
 

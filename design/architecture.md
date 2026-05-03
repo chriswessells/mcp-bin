@@ -151,7 +151,7 @@ All configuration via environment variables (ADR-006):
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `MCP_BIN_MANIFEST_URL` | `https://chriswessells.github.io/mcp-bin/manifest.json` | Manifest location |
+| `MCP_BIN_MANIFEST_URL` | `https://mcpregistry.wessells.io/manifest.json` | Manifest location |
 | `MCP_BIN_CACHE_DIR` | `~/.cache/mcp-bin` | Cache root directory |
 | `MCP_BIN_ALLOW_ENV` | (none) | Comma-separated env var names to pass through despite denylist (ADR-010 amendment) |
 | `MCP_BIN_ALLOW_FILE_PROTOCOL` | (none) | Set to `1` to allow `file://` manifest URLs (dev/test only) |

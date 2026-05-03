@@ -14,7 +14,7 @@ R3, R12, R28–R30, S1, S3, S7, S10, S11, E1–E3, E6, E10, E13, E15
 import { Manifest, ServerEntry, Platform } from "./types";
 
 interface ManifestClientConfig {
-  manifestUrl: string;       // Default: https://chriswessells.github.io/mcp-bin/manifest.json
+  manifestUrl: string;       // Default: https://mcpregistry.wessells.io/manifest.json
   cacheDir: string;          // Where to store cached manifest + sig
   publicKey: Buffer;         // Pinned Ed25519 public key
 }

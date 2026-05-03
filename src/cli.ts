@@ -10,7 +10,7 @@ import { download, DEFAULT_CONFIG } from "./downloader.js";
 import { extract } from "./extractor.js";
 import { createProcessRunner } from "./process-runner.js";
 
-const DEFAULT_MANIFEST_URL = "https://chriswessells.github.io/mcp-bin/manifest.json";
+const DEFAULT_MANIFEST_URL = "https://mcpregistry.wessells.io/manifest.json";
 const SAFE_NAME_RE = /^[a-zA-Z0-9._-]+$/;
 
 const debug = process.env.MCP_BIN_DEBUG === "1"

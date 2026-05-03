@@ -76,7 +76,7 @@ Run Phase 2: launch 5 parallel subagents (T1–T5) using the prompts in `design/
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `MCP_BIN_MANIFEST_URL` | `https://chriswessells.github.io/mcp-bin/manifest.json` | Manifest location |
+| `MCP_BIN_MANIFEST_URL` | `https://mcpregistry.wessells.io/manifest.json` | Manifest location |
 | `MCP_BIN_CACHE_DIR` | `~/.cache/mcp-bin` | Cache root directory |
 | `MCP_BIN_ALLOW_ENV` | (none) | Comma-separated var names to bypass denylist |
 | `MCP_BIN_ALLOW_FILE_PROTOCOL` | (none) | `1` to allow file:// manifests (dev only) |
