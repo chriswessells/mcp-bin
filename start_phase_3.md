@@ -55,7 +55,7 @@ Only ask for user verification **after all of the above is complete** — before
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `MCP_BIN_MANIFEST_URL` | `https://mcpregistry.wessells.io/manifest.json` | Manifest location |
+| `MCP_BIN_MANIFEST_URL` | `https://your-registry.example.com/manifest.json` | Manifest location |
 | `MCP_BIN_CACHE_DIR` | `~/.cache/mcp-bin` | Cache root directory |
 | `MCP_BIN_ALLOW_ENV` | (none) | Comma-separated var names to bypass denylist |
 | `MCP_BIN_ALLOW_FILE_PROTOCOL` | (none) | `1` to allow file:// manifests (dev only) |

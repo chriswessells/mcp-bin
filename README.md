@@ -82,7 +82,7 @@ First run downloads the binary (~5s). Subsequent runs use the cache (<100ms).
 
 | Environment Variable | Description | Default |
 |---|---|---|
-| `MCP_BIN_MANIFEST_URL` | Manifest JSON URL | `https://mcpregistry.wessells.io/manifest.json` |
+| `MCP_BIN_MANIFEST_URL` | Manifest JSON URL | `https://your-registry.example.com/manifest.json` |
 | `MCP_BIN_CACHE_DIR` | Local cache directory | `~/.cache/mcp-bin` |
 | `MCP_BIN_ALLOW_ENV` | Comma-separated env vars to pass through denylist | (none) |
 | `MCP_BIN_DEBUG` | Set to `1` for debug logging | (none) |

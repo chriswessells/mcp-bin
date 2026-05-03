@@ -13,7 +13,7 @@ import {
 } from "./errors.js";
 
 const DEFAULT_MANIFEST_URL =
-  "https://mcpregistry.wessells.io/manifest.json";
+  "https://your-registry.example.com/manifest.json";
 const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 const CONNECT_TIMEOUT_MS = 5_000;
 const RESPONSE_TIMEOUT_MS = 30_000;

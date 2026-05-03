@@ -54,7 +54,7 @@ Fixes: H1 (monolithic manifest), H3 (no manifest caching), H13 (no default hosti
 **INSERT POINT**: After the new R22 above, add:
 
 ```
-- R23: The default manifest URL is `https://mcpregistry.wessells.io/manifest.json`. The `MCP_BIN_MANIFEST_URL` environment variable overrides this default.
+- R23: The default manifest URL is `https://your-registry.example.com/manifest.json`. The `MCP_BIN_MANIFEST_URL` environment variable overrides this default.
 ```
 
 ---
@@ -95,5 +95,5 @@ And the new runner versioning requirement (Change 5) becomes R32 (after the renu
 |----|-------------|
 | R21 (new) | Manifest `schema_version` field + runner validation |
 | R22 (new) | Manifest caching with 1-hour TTL + fallback to stale cache |
-| R23 (new) | Default manifest URL: `https://mcpregistry.wessells.io/manifest.json` |
+| R23 (new) | Default manifest URL: `https://your-registry.example.com/manifest.json` |
 | R32 (new) | Runner CLI stability contract + semver pinning |
