@@ -18,7 +18,26 @@
 
 ## In Progress
 
-- [ ] README update (stale content)
+(none)
+
+## Completed — v1.x Community Onboarding
+
+- [x] Spec: spec/v1x-community-onboarding.md (C1–C8) — reviewed by 7 personas, 15 findings resolved
+- [x] Design: design/v1x/ (architecture, 4 component designs, plan with DAG) — reviewed by 7 personas, 9 findings resolved
+- [x] C1: Configurable Ed25519 public key via MCP_BIN_PUBLIC_KEY env var
+- [x] C2: `latest` version alias with numeric semver resolution (STABLE_VERSION_RE)
+- [x] C3: Cache eviction (maxVersions, .running sentinel, stale-PID + 24h age check)
+- [x] C4: Verbose logging via MCP_BIN_VERBOSE=1 with URL sanitization
+- [x] C5: Self-hosting guide in README (6-step quickstart)
+- [x] C6: manifest.schema.json (JSON Schema draft-07)
+- [x] C7: README enhancements (Why mcp-bin, config table, WSL2 note)
+- [x] C8: update-manifest.sh --help with usage and example
+- [x] Fix shell injection in sign-manifest.sh (Red Lens finding)
+- [x] Code review (7 personas) — 2 HIGH findings fixed
+- [x] Red Lens adversarial security review — 1 HIGH fixed, 1 CRITICAL accepted risk (documented)
+- [x] 62 tests (14 new), all passing
+- [x] Merged to main, pushed (0600fd4)
+- [x] GitHub issue #2 closed (configurable public key)
 
 ## Completed — Implementation
 
@@ -43,7 +62,13 @@
 
 ## Planned
 
-- [ ] README update (currently stale)
+(none — v1.x complete)
+
+## Backlog — v1.x Review Findings
+
+- [ ] #3: Extract shared orchestration logic from cli.ts and integration-harness.ts (maintainability)
+- [ ] #4: Add symlink checks on cache directory paths (security)
+- [ ] #5: Re-verify binary against manifest SHA256 before exec — cache TOCTOU (security)
 
 ## Backlog (Medium from Phase 4 code review)
 
@@ -104,16 +129,13 @@
 - [ ] Minimum binary size / ELF magic byte check after extraction
 - [ ] Platform-appropriate cache paths (macOS ~/Library/Caches, Linux $XDG_CACHE_HOME)
 - [ ] Confirm `@mcp-bin` npm scope is available
-- [ ] Add competitive positioning ("Why not Docker/cargo-binstall?") to README
 - [ ] Clarify P1 (Phase 2 standalone binary) distribution path (Homebrew tap + install script)
 - [ ] Ed25519 key rotation mechanism (multi-key support, key ID in .sig header)
 - [ ] Orphaned temp directory cleanup on startup
-- [ ] Cache eviction policy (keep last N versions per server)
 - [ ] Download resume via HTTP Range header
 - [ ] ETag/If-None-Match for manifest fetch
 - [ ] Refresh lock mtime during long downloads
 - [ ] Check for symlinks before writing to cache paths
 - [ ] Wrap extraction errors with context ("archive may be corrupt")
 - [ ] `mcp-bin warmup <server> <version>` pre-download command
-- [ ] Document WSL2 compatibility for Windows users
 - [ ] npm 2FA + provenance attestation on publish

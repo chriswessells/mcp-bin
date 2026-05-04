@@ -18,18 +18,20 @@ Ship a working runner that downloads, caches, and executes native binary MCP ser
 
 ---
 
-## v1.x — Community onboarding
+## v1.x — Community onboarding ✅
 
 Lower the barrier for third-party server authors without changing the trust model.
 
-- `CONTRIBUTING.md` with manifest submission process
-- JSON schema for manifest validation
-- GitHub PR template with CI validation (lint manifest, verify checksums exist)
-- `latest` version alias in manifest (F1)
-- Cache eviction policy (F2)
-- `MCP_BIN_VERBOSE=1` debug logging (F5)
-- Competitive positioning in README ("Why not Docker/cargo-binstall?")
-- WSL2 compatibility documentation
+- ✅ Configurable Ed25519 public key via `MCP_BIN_PUBLIC_KEY` env var (C1)
+- ✅ `latest` version alias with numeric semver resolution (C2)
+- ✅ Cache eviction policy — max versions per server, `.running` sentinel (C3)
+- ✅ `MCP_BIN_VERBOSE=1` verbose logging with URL sanitization (C4)
+- ✅ Self-hosting guide in README with 6-step quickstart (C5)
+- ✅ JSON Schema for manifest validation — `manifest.schema.json` (C6)
+- ✅ README enhancements — "Why mcp-bin?", updated config table, WSL2 note (C7)
+- ✅ `update-manifest.sh --help` with usage and copy-pasteable example (C8)
+- ✅ Shell injection fix in `sign-manifest.sh`
+- ✅ 62 tests, 4 review cycles, 27 findings resolved
 
 ---
 
