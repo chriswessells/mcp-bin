@@ -11,10 +11,11 @@
  * Requires env: MCP_BIN_MANIFEST_URL, MCP_BIN_CACHE_DIR, PUBLIC_KEY
  */
 import fs from "node:fs";
+import fsp from "node:fs/promises";
 import path from "node:path";
 import os from "node:os";
 import { detectPlatform } from "../src/platform.ts";
-import { ManifestClient } from "../src/manifest-client.ts";
+import { ManifestClient, resolveLatest } from "../src/manifest-client.ts";
 import { CacheManager } from "../src/cache-manager.ts";
 import { download, DEFAULT_CONFIG, type DownloaderConfig } from "../src/downloader.ts";
 import { extract } from "../src/extractor.ts";
@@ -51,21 +52,40 @@ const dlConfig: DownloaderConfig = {
 async function main(): Promise<void> {
   const platformKey = detectPlatform();
   const manifestClient = new ManifestClient({ cacheDir, manifestUrl, publicKey });
-  const cacheManager = new CacheManager({ cacheDir });
+
+  const maxVersions = process.env.MCP_BIN_CACHE_MAX_VERSIONS !== undefined
+    ? parseInt(process.env.MCP_BIN_CACHE_MAX_VERSIONS, 10)
+    : undefined;
+  if (maxVersions !== undefined && (isNaN(maxVersions) || maxVersions < 0)) {
+    process.stderr.write('Invalid MCP_BIN_CACHE_MAX_VERSIONS: must be a non-negative integer\n');
+    process.exit(1);
+  }
+  const cacheManager = new CacheManager({
+    cacheDir,
+    ...(maxVersions !== undefined ? { maxVersions } : {}),
+  });
 
   const { manifest } = await manifestClient.fetch();
-  const entry = manifestClient.resolve(manifest, serverName, version, platformKey);
 
-  const cacheResult = await cacheManager.lookup(serverName, version, entry.binaryName);
+  let resolvedVersion = version;
+  if (resolvedVersion === "latest") {
+    resolvedVersion = resolveLatest(manifest, serverName);
+    process.stderr.write(`Resolved latest → ${resolvedVersion}\n`);
+  }
+
+  const entry = manifestClient.resolve(manifest, serverName, resolvedVersion, platformKey);
+
+  const cacheResult = await cacheManager.lookup(serverName, resolvedVersion, entry.binaryName);
   let binaryPath: string;
+  let didStore = false;
 
   if (cacheResult.hit) {
     binaryPath = cacheResult.binaryPath;
   } else {
-    await cacheManager.acquireLock(serverName, version);
+    await cacheManager.acquireLock(serverName, resolvedVersion);
 
     // Signal handlers for download-phase cleanup (mirrors cli.ts)
-    const lockPath = path.join(cacheDir, serverName, version, ".lock");
+    const lockPath = path.join(cacheDir, serverName, resolvedVersion, ".lock");
     let cleanupPath: string | null = null;
     const downloadPhaseHandler = () => {
       if (cleanupPath) try { fs.rmSync(cleanupPath, { recursive: true, force: true }); } catch {}
@@ -76,27 +96,49 @@ async function main(): Promise<void> {
     process.on("SIGINT", downloadPhaseHandler);
 
     try {
-      const recheck = await cacheManager.lookup(serverName, version, entry.binaryName);
+      const recheck = await cacheManager.lookup(serverName, resolvedVersion, entry.binaryName);
       if (recheck.hit) {
         binaryPath = recheck.binaryPath;
       } else {
-        const tmpDir = await cacheManager.tempDir(serverName, version);
+        const tmpDir = await cacheManager.tempDir(serverName, resolvedVersion);
         cleanupPath = tmpDir;
         const archivePath = path.join(tmpDir, "archive.tar.gz");
-        await download(entry.url, entry.sha256, archivePath, dlConfig, undefined, { serverName, version });
+        await download(entry.url, entry.sha256, archivePath, dlConfig, undefined, { serverName, version: resolvedVersion });
         const tmpBinaryPath = await extract(archivePath, entry.binaryName, tmpDir);
-        binaryPath = await cacheManager.store(serverName, version, entry.binaryName, tmpBinaryPath);
+        binaryPath = await cacheManager.store(serverName, resolvedVersion, entry.binaryName, tmpBinaryPath);
+
+        // Write .running sentinel immediately after store (before utimes/eviction)
+        const runningPath = path.join(cacheDir, serverName, resolvedVersion, ".running");
+        await fsp.writeFile(runningPath, String(process.pid)).catch(() => {});
+
+        const versionDirPath = path.join(cacheDir, serverName, resolvedVersion);
+        await fsp.utimes(versionDirPath, new Date(), new Date()).catch(() => {});
+        didStore = true;
       }
     } finally {
-      await cacheManager.releaseLock(serverName, version);
-      await cacheManager.cleanupTemp(serverName, version);
+      await cacheManager.releaseLock(serverName, resolvedVersion);
+      await cacheManager.cleanupTemp(serverName, resolvedVersion);
       process.removeListener("SIGTERM", downloadPhaseHandler);
       process.removeListener("SIGINT", downloadPhaseHandler);
     }
   }
 
+  if (didStore) {
+    await cacheManager.evict(serverName, resolvedVersion).catch(() => {});
+  }
+
+  // Cache hit path — write .running sentinel before exec
+  if (!didStore) {
+    const runningPath = path.join(cacheDir, serverName, resolvedVersion, ".running");
+    await fsp.writeFile(runningPath, String(process.pid)).catch(() => {});
+  }
+
   const runner = createProcessRunner();
   const exitCode = await runner.exec(binaryPath, extraArgs);
+
+  // Remove .running sentinel after exec
+  const runningPath = path.join(cacheDir, serverName, resolvedVersion, ".running");
+  await fsp.unlink(runningPath).catch(() => {});
   process.exit(exitCode);
 }
 

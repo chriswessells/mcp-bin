@@ -144,3 +144,21 @@ export class DiskFullError extends McpBinError {
     super(`Insufficient disk space in cache directory: ${path}`, "ENOSPC");
   }
 }
+
+/** E16: Invalid MCP_BIN_PUBLIC_KEY */
+export class InvalidPublicKeyError extends McpBinError {
+  constructor() {
+    super(
+      "Invalid MCP_BIN_PUBLIC_KEY: expected base64-encoded Ed25519 DER SPKI public key.\n" +
+      "Extract with: openssl pkey -in your-key.pem -pubout -outform DER | base64 | tr -d '\\n'",
+      "E16"
+    );
+  }
+}
+
+/** E17: No stable versions for latest resolution */
+export class NoStableVersionsError extends McpBinError {
+  constructor(serverName: string) {
+    super(`No stable versions found for '${serverName}'`, "E17");
+  }
+}

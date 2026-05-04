@@ -3,15 +3,18 @@ import fsp from "node:fs/promises";
 import path from "node:path";
 import crypto from "node:crypto";
 import type { CacheLookupResult } from "./types.js";
-import { LockTimeoutError } from "./errors.js";
+import { LockTimeoutError, InvalidArgumentError } from "./errors.js";
 
 export interface CacheManagerConfig {
   cacheDir: string;
+  maxVersions: number;
+  logger: (msg: string) => void;
 }
 
 const LOCK_TIMEOUT_MS = 60_000;
 const LOCK_POLL_MS = 1_000;
 const STALE_LOCK_MS = 3 * 60 * 1_000; // 3 minutes — reduced from 10 to limit PID recycling window
+const STALE_RUNNING_MS = 24 * 60 * 60 * 1_000; // 24 hours — age-based fallback for .running sentinel
 
 async function sha256File(filePath: string): Promise<string> {
   const hash = crypto.createHash("sha256");
@@ -32,12 +35,24 @@ function pidAlive(pid: number): boolean {
 
 export class CacheManager {
   private readonly cacheDir: string;
+  private readonly maxVersions: number;
+  private readonly logger: (msg: string) => void;
 
-  constructor(config: CacheManagerConfig) {
+  private static readonly SAFE_NAME_RE = /^[a-zA-Z0-9._-]+$/;
+
+  constructor(config: Partial<CacheManagerConfig> & { cacheDir: string }) {
     this.cacheDir = config.cacheDir;
+    this.maxVersions = config.maxVersions ?? 5;
+    this.logger = config.logger ?? (() => {});
   }
 
   private versionDir(serverName: string, version: string): string {
+    if (!CacheManager.SAFE_NAME_RE.test(serverName)) {
+      throw new InvalidArgumentError(`Invalid server name: '${serverName}'`);
+    }
+    if (!CacheManager.SAFE_NAME_RE.test(version)) {
+      throw new InvalidArgumentError(`Invalid version: '${version}'`);
+    }
     return path.join(this.cacheDir, serverName, version);
   }
 
@@ -142,5 +157,68 @@ export class CacheManager {
   async cleanupTemp(serverName: string, version: string): Promise<void> {
     const tmpPath = path.join(this.versionDir(serverName, version), ".tmp");
     await fsp.rm(tmpPath, { recursive: true, force: true });
+  }
+
+  async evict(serverName: string, currentVersion: string): Promise<void> {
+    if (this.maxVersions === 0) return;
+
+    const serverDir = path.join(this.cacheDir, serverName);
+    let entries: string[];
+    try {
+      entries = await fsp.readdir(serverDir);
+    } catch {
+      return;
+    }
+
+    const versionDirs = entries.filter(e => CacheManager.SAFE_NAME_RE.test(e) && !e.startsWith('.'));
+
+    if (versionDirs.length <= this.maxVersions) return;
+
+    const stats: Array<{ name: string; mtimeMs: number }> = [];
+    for (const name of versionDirs) {
+      if (name === currentVersion) continue;
+      const dir = path.join(serverDir, name);
+      try {
+        await fsp.access(path.join(dir, '.lock'));
+        continue;
+      } catch {
+        // No .lock — eligible
+      }
+      try {
+        const pidStr = await fsp.readFile(path.join(dir, '.running'), 'utf-8');
+        const pid = parseInt(pidStr.trim(), 10);
+        const runningStat = await fsp.stat(path.join(dir, '.running'));
+        if (Date.now() - runningStat.mtimeMs > STALE_RUNNING_MS) {
+          await fsp.unlink(path.join(dir, '.running')).catch(() => {});
+        } else if (!isNaN(pid) && pidAlive(pid)) {
+          continue;
+        } else {
+          await fsp.unlink(path.join(dir, '.running')).catch(() => {});
+        }
+      } catch {
+        // No .running — eligible
+      }
+      try {
+        const st = await fsp.stat(dir);
+        stats.push({ name, mtimeMs: st.mtimeMs });
+      } catch {
+        continue;
+      }
+    }
+
+    stats.sort((a, b) => a.mtimeMs - b.mtimeMs);
+
+    let currentCount = versionDirs.length;
+    for (const entry of stats) {
+      if (currentCount <= this.maxVersions) break;
+      const dir = path.join(serverDir, entry.name);
+      try {
+        await fsp.rm(dir, { recursive: true, force: true });
+        this.logger(`Evicted cached version: ${serverName}@${entry.name}`);
+        currentCount--;
+      } catch {
+        this.logger(`Failed to evict ${serverName}@${entry.name}`);
+      }
+    }
   }
 }

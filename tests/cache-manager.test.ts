@@ -6,7 +6,7 @@ import path from "node:path";
 import os from "node:os";
 import crypto from "node:crypto";
 import { CacheManager } from "../src/cache-manager.ts";
-import { LockTimeoutError } from "../src/errors.ts";
+import { LockTimeoutError, InvalidArgumentError } from "../src/errors.ts";
 
 let tmpRoot: string;
 let cm: CacheManager;
@@ -148,6 +148,110 @@ describe("CacheManager", () => {
 
       await cm.cleanupTemp("srv", "1.0");
       assert.ok(!fs.existsSync(tmp));
+    });
+  });
+
+  describe("evict (C3)", () => {
+    it("T16: evicts oldest version when count exceeds max", async () => {
+      const evictCm = new CacheManager({ cacheDir: tmpRoot, maxVersions: 2 });
+
+      for (const [i, ver] of ["1.0.0", "2.0.0", "3.0.0"].entries()) {
+        const dir = path.join(tmpRoot, "srv", ver);
+        await fsp.mkdir(dir, { recursive: true });
+        await fsp.writeFile(path.join(dir, "bin"), `v${ver}`);
+        const t = new Date(Date.now() - (3 - i) * 60_000);
+        await fsp.utimes(dir, t, t);
+      }
+
+      await evictCm.evict("srv", "3.0.0");
+
+      assert.ok(!fs.existsSync(path.join(tmpRoot, "srv", "1.0.0")));
+      assert.ok(fs.existsSync(path.join(tmpRoot, "srv", "2.0.0")));
+      assert.ok(fs.existsSync(path.join(tmpRoot, "srv", "3.0.0")));
+    });
+
+    it("T17: maxVersions=0 disables eviction", async () => {
+      const evictCm = new CacheManager({ cacheDir: tmpRoot, maxVersions: 0 });
+
+      for (const ver of ["1.0.0", "2.0.0", "3.0.0", "4.0.0", "5.0.0", "6.0.0"]) {
+        const dir = path.join(tmpRoot, "srv", ver);
+        await fsp.mkdir(dir, { recursive: true });
+        await fsp.writeFile(path.join(dir, "bin"), `v${ver}`);
+      }
+
+      await evictCm.evict("srv", "6.0.0");
+
+      for (const ver of ["1.0.0", "2.0.0", "3.0.0", "4.0.0", "5.0.0", "6.0.0"]) {
+        assert.ok(fs.existsSync(path.join(tmpRoot, "srv", ver)));
+      }
+    });
+
+    it("T19: eviction skips directories with .lock file", async () => {
+      const evictCm = new CacheManager({ cacheDir: tmpRoot, maxVersions: 1 });
+
+      for (const [i, ver] of ["1.0.0", "2.0.0"].entries()) {
+        const dir = path.join(tmpRoot, "srv", ver);
+        await fsp.mkdir(dir, { recursive: true });
+        await fsp.writeFile(path.join(dir, "bin"), `v${ver}`);
+        const t = new Date(Date.now() - (2 - i) * 60_000);
+        await fsp.utimes(dir, t, t);
+      }
+
+      await fsp.writeFile(path.join(tmpRoot, "srv", "1.0.0", ".lock"), String(process.pid));
+
+      await evictCm.evict("srv", "2.0.0");
+
+      assert.ok(fs.existsSync(path.join(tmpRoot, "srv", "1.0.0")));
+      assert.ok(fs.existsSync(path.join(tmpRoot, "srv", "2.0.0")));
+    });
+
+    it("T20: eviction skips directories with live .running file", async () => {
+      const evictCm = new CacheManager({ cacheDir: tmpRoot, maxVersions: 1 });
+
+      for (const [i, ver] of ["1.0.0", "2.0.0"].entries()) {
+        const dir = path.join(tmpRoot, "srv", ver);
+        await fsp.mkdir(dir, { recursive: true });
+        await fsp.writeFile(path.join(dir, "bin"), `v${ver}`);
+        const t = new Date(Date.now() - (2 - i) * 60_000);
+        await fsp.utimes(dir, t, t);
+      }
+
+      await fsp.writeFile(path.join(tmpRoot, "srv", "1.0.0", ".running"), String(process.pid));
+
+      await evictCm.evict("srv", "2.0.0");
+
+      assert.ok(fs.existsSync(path.join(tmpRoot, "srv", "1.0.0")));
+    });
+
+    it("T20b: eviction removes stale .running (older than 24h) even if PID is alive", async () => {
+      const evictCm = new CacheManager({ cacheDir: tmpRoot, maxVersions: 1 });
+
+      for (const [i, ver] of ["1.0.0", "2.0.0"].entries()) {
+        const dir = path.join(tmpRoot, "srv", ver);
+        await fsp.mkdir(dir, { recursive: true });
+        await fsp.writeFile(path.join(dir, "bin"), `v${ver}`);
+        const t = new Date(Date.now() - (2 - i) * 60_000);
+        await fsp.utimes(dir, t, t);
+      }
+
+      const runningPath = path.join(tmpRoot, "srv", "1.0.0", ".running");
+      await fsp.writeFile(runningPath, String(process.pid));
+      const staleTime = new Date(Date.now() - 25 * 60 * 60 * 1000);
+      await fsp.utimes(runningPath, staleTime, staleTime);
+
+      await evictCm.evict("srv", "2.0.0");
+
+      assert.ok(!fs.existsSync(path.join(tmpRoot, "srv", "1.0.0")));
+    });
+
+    it("T21: versionDir rejects path traversal in serverName", async () => {
+      await assert.rejects(
+        () => cm.lookup("../etc", "1.0.0", "bin"),
+        (err: any) => {
+          assert.strictEqual(err.code, "EINVAL");
+          return true;
+        }
+      );
     });
   });
 });

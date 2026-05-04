@@ -4,7 +4,8 @@ import { generateKeyPairSync, sign } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 import os from "node:os";
-import { ManifestClient } from "../src/manifest-client.ts";
+import { ManifestClient, resolveLatest } from "../src/manifest-client.ts";
+import { NoStableVersionsError, ServerNotFoundError } from "../src/errors.ts";
 import type { Manifest } from "../src/types.ts";
 
 // Generate test Ed25519 keypair in DER SPKI format
@@ -191,6 +192,111 @@ describe("ManifestClient.resolve()", () => {
         client.resolve(validManifest, "test-server", "1.0.0", "linux-x64"),
       (err: any) => {
         assert.strictEqual(err.code, "E3");
+        return true;
+      }
+    );
+  });
+});
+
+describe("ManifestClient constructor (C1)", () => {
+  it("T12: accepts a valid custom Ed25519 public key", () => {
+    const client = new ManifestClient({ cacheDir, publicKey });
+    assert.ok(client);
+  });
+
+  it("T13: rejects garbage MCP_BIN_PUBLIC_KEY with E16", () => {
+    const garbage = Buffer.from("not-a-valid-key");
+    assert.throws(
+      () => new ManifestClient({ cacheDir, publicKey: garbage }),
+      (err: any) => {
+        assert.strictEqual(err.code, "E16");
+        assert.match(err.message, /Ed25519 DER SPKI/);
+        return true;
+      }
+    );
+  });
+
+  it("T13b: rejects RSA SPKI key with E16", () => {
+    const { publicKey: rsaPub } = generateKeyPairSync("rsa", { modulusLength: 2048 });
+    const rsaDer = rsaPub.export({ type: "spki", format: "der" }) as Buffer;
+    assert.throws(
+      () => new ManifestClient({ cacheDir, publicKey: rsaDer }),
+      (err: any) => {
+        assert.strictEqual(err.code, "E16");
+        return true;
+      }
+    );
+  });
+});
+
+describe("resolveLatest (C2)", () => {
+  it("T14: resolves to highest stable version, skipping prerelease", () => {
+    const manifest: Manifest = {
+      schema_version: 1,
+      servers: {
+        "test-server": {
+          "1.0.0": { "darwin-arm64": { url: "https://x.com/a", sha256: "a".repeat(64) } },
+          "2.0.0": { "darwin-arm64": { url: "https://x.com/b", sha256: "b".repeat(64) } },
+          "1.5.0-beta.1": { "darwin-arm64": { url: "https://x.com/c", sha256: "c".repeat(64) } },
+        },
+      },
+    };
+    assert.strictEqual(resolveLatest(manifest, "test-server"), "2.0.0");
+  });
+
+  it("T14b: uses numeric not lexicographic comparison", () => {
+    const manifest: Manifest = {
+      schema_version: 1,
+      servers: {
+        "test-server": {
+          "9.0.0": { "darwin-arm64": { url: "https://x.com/a", sha256: "a".repeat(64) } },
+          "10.0.0": { "darwin-arm64": { url: "https://x.com/b", sha256: "b".repeat(64) } },
+        },
+      },
+    };
+    assert.strictEqual(resolveLatest(manifest, "test-server"), "10.0.0");
+  });
+
+  it("T14c: skips malformed versions like '1.0.0a' (strict STABLE_VERSION_RE)", () => {
+    const manifest: Manifest = {
+      schema_version: 1,
+      servers: {
+        "test-server": {
+          "1.0.0": { "darwin-arm64": { url: "https://x.com/a", sha256: "a".repeat(64) } },
+          "1.0.0a": { "darwin-arm64": { url: "https://x.com/b", sha256: "b".repeat(64) } },
+          "2.0": { "darwin-arm64": { url: "https://x.com/c", sha256: "c".repeat(64) } },
+          "latest": { "darwin-arm64": { url: "https://x.com/d", sha256: "d".repeat(64) } },
+        },
+      },
+    };
+    assert.strictEqual(resolveLatest(manifest, "test-server"), "1.0.0");
+  });
+
+  it("T15: throws E17 when only prerelease versions exist", () => {
+    const manifest: Manifest = {
+      schema_version: 1,
+      servers: {
+        "test-server": {
+          "1.0.0-rc.1": { "darwin-arm64": { url: "https://x.com/a", sha256: "a".repeat(64) } },
+        },
+      },
+    };
+    assert.throws(
+      () => resolveLatest(manifest, "test-server"),
+      (err: any) => {
+        assert.strictEqual(err.code, "E17");
+        assert.match(err.message, /test-server/);
+        return true;
+      }
+    );
+  });
+
+  it("throws E1 for missing server", () => {
+    const manifest: Manifest = { schema_version: 1, servers: {} };
+    assert.throws(
+      () => resolveLatest(manifest, "nope"),
+      (err: any) => {
+        assert.strictEqual(err.code, "E1");
         return true;
       }
     );
