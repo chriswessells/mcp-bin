@@ -1,4 +1,4 @@
-import { verify } from "node:crypto";
+import { verify, createPublicKey } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 import type { Manifest, Platform, ServerEntry } from "./types.js";
@@ -10,6 +10,9 @@ import {
   ServerNotFoundError,
   VersionNotFoundError,
   PlatformNotFoundError,
+  InvalidPublicKeyError,
+  NoStableVersionsError,
+  sanitizeUrl,
 } from "./errors.js";
 
 const DEFAULT_MANIFEST_URL =
@@ -25,6 +28,7 @@ export interface ManifestClientConfig {
   manifestUrl: string;
   cacheDir: string;
   publicKey: Buffer;
+  logger: (msg: string) => void;
 }
 
 export interface FetchResult {
@@ -95,24 +99,30 @@ export class ManifestClient {
       manifestUrl: config.manifestUrl ?? DEFAULT_MANIFEST_URL,
       cacheDir: config.cacheDir,
       publicKey: config.publicKey ?? DEFAULT_PUBLIC_KEY,
+      logger: config.logger ?? (() => {}),
     };
     this.manifestDir = path.join(this.config.cacheDir, ".manifest");
     this.manifestPath = path.join(this.manifestDir, "manifest.json");
     this.sigPath = path.join(this.manifestDir, "manifest.json.sig");
     this.metaPath = path.join(this.manifestDir, "manifest.json.meta");
+
+    try {
+      const keyObj = createPublicKey({ key: this.config.publicKey, format: 'der', type: 'spki' });
+      if (keyObj.asymmetricKeyType !== 'ed25519') {
+        throw new InvalidPublicKeyError();
+      }
+    } catch (err) {
+      if (err instanceof InvalidPublicKeyError) throw err;
+      throw new InvalidPublicKeyError();
+    }
   }
 
   async fetch(): Promise<FetchResult> {
     const warnings: string[] = [];
     const { manifestUrl, publicKey } = this.config;
 
-    if (publicKey.every((b) => b === 0)) {
-      throw new Error(
-        "Ed25519 public key not configured — replace the placeholder before release"
-      );
-    }
-
     validateUrl(manifestUrl);
+    this.config.logger(`Fetching manifest from ${sanitizeUrl(manifestUrl)}`);
 
     if (
       manifestUrl !== DEFAULT_MANIFEST_URL &&
@@ -143,6 +153,7 @@ export class ManifestClient {
       }
       if (fresh) {
         if (verifySignature(cached.manifest, cached.sig, publicKey)) {
+          this.config.logger("Manifest served from cache (fresh)");
           return {
             manifest: validateManifest(JSON.parse(cached.manifest.toString())),
             warnings,
@@ -188,6 +199,7 @@ export class ManifestClient {
       throw new SignatureVerificationError();
     }
 
+    this.config.logger("Manifest signature verified");
     const manifest = validateManifest(JSON.parse(manifestBytes.toString()));
 
     // Write cache atomically
@@ -243,6 +255,7 @@ export class ManifestClient {
     const manifest = validateManifest(
       JSON.parse(cached.manifest.toString())
     );
+    this.config.logger("Manifest served from cache (fallback)");
     warnings.push(
       "Warning: using cached manifest (fetch failed)"
     );
@@ -271,4 +284,29 @@ export class ManifestClient {
       // Cache write failure is non-fatal
     }
   }
+}
+
+// Strict semver stable version check — rejects pre-release tags (1.0.0-beta),
+// malformed versions (1.0.0a), and anything that isn't exactly major.minor.patch.
+const STABLE_VERSION_RE = /^\d+\.\d+\.\d+$/;
+
+export function resolveLatest(manifest: Manifest, serverName: string): string {
+  const server = manifest.servers[serverName];
+  if (!server) throw new ServerNotFoundError(serverName);
+  let best: string | null = null;
+  for (const v of Object.keys(server)) {
+    if (!STABLE_VERSION_RE.test(v)) continue;
+    if (best === null || semverGt(v, best)) best = v;
+  }
+  if (!best) throw new NoStableVersionsError(serverName);
+  return best;
+}
+
+function semverGt(a: string, b: string): boolean {
+  const pa = a.split('.').map(Number);
+  const pb = b.split('.').map(Number);
+  for (let i = 0; i < 3; i++) {
+    if ((pa[i] ?? 0) !== (pb[i] ?? 0)) return (pa[i] ?? 0) > (pb[i] ?? 0);
+  }
+  return false;
 }

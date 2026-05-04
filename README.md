@@ -78,6 +78,14 @@ First run downloads the binary (~5s). Subsequent runs use the cache (<100ms).
 - **Atomic cache writes** — no partial state on crash or concurrent access
 - **File-based locking** — concurrent invocations don't corrupt the cache
 
+## Why mcp-bin?
+
+**vs. Docker:** Lighter weight, no container runtime required, native performance, simpler configuration in MCP client settings.
+
+**vs. cargo-binstall:** Works for any compiled language (Go, Rust, C++, Zig), integrates with MCP registries, signed manifests for supply-chain security.
+
+**vs. manual install scripts:** Automatic caching, version management, SHA256 checksum verification, cross-platform detection, Ed25519 manifest signing.
+
 ## Configuration
 
 | Environment Variable | Description | Default |
@@ -87,12 +95,66 @@ First run downloads the binary (~5s). Subsequent runs use the cache (<100ms).
 | `MCP_BIN_ALLOW_ENV` | Comma-separated env vars to pass through denylist | (none) |
 | `MCP_BIN_DEBUG` | Set to `1` for debug logging | (none) |
 | `MCP_BIN_CHECK` | Set to `1` for diagnostic mode (no exec) | (none) |
+| `MCP_BIN_PUBLIC_KEY` | Base64-encoded Ed25519 DER SPKI public key for manifest verification | (hardcoded default) |
+| `MCP_BIN_CACHE_MAX_VERSIONS` | Max cached versions per server (0 = unlimited) | `5` |
+| `MCP_BIN_VERBOSE` | Set to `1` for verbose logging (includes debug output) | (none) |
+
+## Self-Hosting
+
+Run your own mcp-bin registry — no fork required.
+
+### Quickstart
+
+1. **Generate an Ed25519 signing key:**
+   ```bash
+   openssl genpkey -algorithm ed25519 -out signing-key.pem
+   ```
+
+2. **Extract the base64 DER SPKI public key:**
+   ```bash
+   openssl pkey -in signing-key.pem -pubout -outform DER | base64 | tr -d '\n'
+   ```
+   > **Important:** The `tr -d '\n'` is required — most base64 implementations wrap output at 76 characters by default, which breaks the environment variable.
+
+3. **Create your manifest:**
+   ```bash
+   ./update-manifest.sh \
+     --server my-server \
+     --version 1.0.0 \
+     --release-url https://github.com/you/my-server/releases/download/v1.0.0 \
+     --checksums https://github.com/you/my-server/releases/download/v1.0.0/SHA256SUMS.txt
+   ```
+
+4. **Sign the manifest:**
+   ```bash
+   ./sign-manifest.sh manifest.json signing-key.pem
+   ```
+
+5. **Host `manifest.json` and `manifest.json.sig`** on any HTTPS endpoint (GitHub Pages, S3, any static host).
+
+6. **Configure clients:**
+   ```bash
+   export MCP_BIN_MANIFEST_URL=https://your-domain.com/manifest.json
+   export MCP_BIN_PUBLIC_KEY=<output from step 2>
+   ```
+
+### Server Binary Requirements
+
+- Must be an MCP server using stdio transport.
+- Must provide `.tar.gz` archives for at least one supported platform (`darwin-arm64`, `linux-x64`, `linux-arm64`).
+- Must provide a SHA256SUMS file in the release.
+- Binary must be statically linked or bundled with all dependencies.
+- Release URLs must be HTTPS.
 
 ## Platforms
 
 - `darwin-arm64` (macOS Apple Silicon)
 - `linux-x64`
 - `linux-arm64`
+
+### WSL2
+
+mcp-bin works under WSL2 using the `linux-x64` platform. No special configuration required.
 
 ## For Server Authors
 
@@ -152,7 +214,7 @@ Fix by wrapping the call so it runs from a neutral directory:
 ```bash
 npm ci
 npx tsc --noEmit          # type check
-node --import tsx --test tests/*.test.ts  # run all 48 tests
+node --import tsx --test tests/*.test.ts  # run all tests
 ```
 
 ## How This Package Was Built

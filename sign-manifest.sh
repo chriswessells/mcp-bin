@@ -16,13 +16,13 @@ if [ ! -f "$KEY" ]; then
   exit 1
 fi
 
-node -e "
+_MCP_MANIFEST="$MANIFEST" _MCP_KEY="$KEY" node -e "
 const crypto = require('crypto');
 const fs = require('fs');
-const manifest = fs.readFileSync('$MANIFEST');
-const key = fs.readFileSync('$KEY', 'utf-8');
+const manifest = fs.readFileSync(process.env._MCP_MANIFEST);
+const key = fs.readFileSync(process.env._MCP_KEY, 'utf-8');
 const privateKey = crypto.createPrivateKey(key);
 const sig = crypto.sign(null, manifest, privateKey);
-fs.writeFileSync('${MANIFEST}.sig', sig);
-console.log('Signed: ${MANIFEST}.sig (' + sig.length + ' bytes)');
+fs.writeFileSync(process.env._MCP_MANIFEST + '.sig', sig);
+console.log('Signed: ' + process.env._MCP_MANIFEST + '.sig (' + sig.length + ' bytes)');
 "
