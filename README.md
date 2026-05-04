@@ -127,6 +127,26 @@ Add your server to the manifest after a release:
 }
 ```
 
+## Troubleshooting
+
+### `mcp-bin-runner: command not found` when launching from the project directory
+
+If your MCP host (e.g. Kiro CLI) launches from a directory that contains this project's `package.json`, `npx` resolves `@mcp-bin/runner` to the local source instead of the published npm package. Since the local bin isn't linked, the command isn't found.
+
+Fix by wrapping the call so it runs from a neutral directory:
+
+```json
+{
+  "local-memory-mcp": {
+    "command": "sh",
+    "args": ["-c", "cd /tmp && exec npx -y @mcp-bin/runner local-memory-mcp 2.0.1"],
+    "env": {
+      "MCP_BIN_MANIFEST_URL": "https://mcpregistry.wessells.io/manifest.json"
+    }
+  }
+}
+```
+
 ## Development
 
 ```bash
