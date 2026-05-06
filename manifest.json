@@ -21,7 +21,7 @@
       "0.1.1": {
         "darwin-arm64": {
           "url": "https://github.com/chriswessells/ksl-classifieds-mcp/releases/download/v0.1.1/ksl-classifieds-mcp-darwin-arm64.tar.gz",
-          "sha256": "49a0bf569c6991b50f6ee5426ff98e83c8f518bec2344fbda645afcc8dae0fbb"
+          "sha256": "5a3f140e9309d5527444a1919ea19d14a63064ade5aeecbe53584409416bc221"
         }
       }
     }
