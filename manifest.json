@@ -18,6 +18,12 @@
       }
     },
     "ksl-classifieds-mcp": {
+      "0.1.2": {
+        "darwin-arm64": {
+          "url": "https://github.com/chriswessells/ksl-classifieds-mcp/releases/download/v0.1.2/ksl-classifieds-mcp-darwin-arm64.tar.gz",
+          "sha256": "cfcae8384e1f7257e9c84bff0cdfd83e64fa1ac2083cebd26bf542869867b61e"
+        }
+      },
       "0.1.1": {
         "darwin-arm64": {
           "url": "https://github.com/chriswessells/ksl-classifieds-mcp/releases/download/v0.1.1/ksl-classifieds-mcp-darwin-arm64.tar.gz",
