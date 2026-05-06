@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "servers": {
+    "local-memory-mcp": {
+      "2.0.1": {
+        "darwin-arm64": {
+          "url": "https://github.com/chriswessells/local-memory-mcp/releases/download/v2.0.1/local-memory-mcp-aarch64-apple-darwin.tar.gz",
+          "sha256": "e31c23dcaba8e0157a667a45a967c90367b76d2cb48d0810ea5746460c4c5b98"
+        },
+        "linux-x64": {
+          "url": "https://github.com/chriswessells/local-memory-mcp/releases/download/v2.0.1/local-memory-mcp-x86_64-unknown-linux-gnu.tar.gz",
+          "sha256": "f4cfec68533649afba0c4f0742ebb736e55998558686024fda83116a88263319"
+        },
+        "linux-arm64": {
+          "url": "https://github.com/chriswessells/local-memory-mcp/releases/download/v2.0.1/local-memory-mcp-aarch64-unknown-linux-gnu.tar.gz",
+          "sha256": "0421250efcca07e763307827e2a33c6790bb82aa1e6dd4db7ba86acb9b9daec1"
+        }
+      }
+    },
+    "ksl-classifieds-mcp": {
+      "0.1.1": {
+        "darwin-arm64": {
+          "url": "https://github.com/chriswessells/ksl-classifieds-mcp/releases/download/v0.1.1/ksl-classifieds-mcp-darwin-arm64.tar.gz",
+          "sha256": "49a0bf569c6991b50f6ee5426ff98e83c8f518bec2344fbda645afcc8dae0fbb"
+        }
+      }
+    }
+  }
+}
